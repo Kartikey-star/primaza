@@ -261,3 +261,19 @@ def on_worker_cluster_check_service_catalog_exists_on_application_namespace(cont
         check_success=lambda x: x is not None,
         step=5,
         timeout=60)
+
+
+@then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog}" exists')
+def on_primaza_cluster_check_service_catalog_exists(context, cluster, catalog):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog),
+        check_success=lambda x: x is not None,
+        step=5,
+        timeout=60)
