@@ -113,6 +113,12 @@ def registered_service_in_catalog(rs_name, catalog):
                 return True
     return False
 
+def catalog_is_empty(catalog):
+    if "spec" in catalog and "services" in catalog["spec"]:
+        if len(catalog["spec"]["services"])  == 0:
+                return True
+    return False
+
 
 @step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" state moves to "{state}"')
 def on_primaza_cluster_claim_registered_service(context, primaza_cluster, primaza_rs, state):
@@ -277,3 +283,20 @@ def on_primaza_cluster_check_service_catalog_exists(context, cluster, catalog):
         check_success=lambda x: x is not None,
         step=5,
         timeout=60)
+
+
+@then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" is empty')
+def on_primaza_cluster_check_service_catalog_empty(context, cluster, catalog_name):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog_name),
+        check_success=lambda x: x is not None and catalog_is_empty(catalog_name),
+        step=5,
+        timeout=20)
