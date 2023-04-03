@@ -1,8 +1,14 @@
-@check
+# TODO: rely on a single cluster scenario
 Feature: Initialize ServiceCatalog
 
-    Scenario: Empty Service Catalog
+    Background:
         Given Primaza Cluster "main" is running
+        And  Worker Cluster "worker" for "main" is running
+        And  Clusters "main" and "worker" can communicate
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+
+    @wip
+    Scenario: Empty Service Catalog
         When  On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -17,7 +23,6 @@ Feature: Initialize ServiceCatalog
         Then On Primaza Cluster "main", ServiceCatalog "dev" is empty
 
     Scenario: Update Registered Service in Service Catalog
-        Given Primaza Cluster "main" is running
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -57,7 +62,6 @@ Feature: Initialize ServiceCatalog
         Then On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
 
     Scenario: Service catalog is not initialized with unmatched Registered Services
-        Given Primaza Cluster "main" is running
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

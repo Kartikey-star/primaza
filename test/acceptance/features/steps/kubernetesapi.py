@@ -114,8 +114,8 @@ def registered_service_in_catalog(rs_name, catalog):
     return False
 
 def catalog_is_empty(catalog):
-    if "spec" in catalog and "services" in catalog["spec"]:
-        if len(catalog["spec"]["services"])  == 0:
+    if "spec" in catalog:
+        if len(catalog["spec"])  == 0:
                 return True
     return False
 
