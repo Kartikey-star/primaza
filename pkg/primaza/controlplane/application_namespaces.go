@@ -118,6 +118,7 @@ func pushServiceBindingToNamespace(
 }
 
 func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaiov1alpha1.ServiceCatalog, scheme *runtime.Scheme, controllerruntimeClient client.Client, applicationNamespaces []string, cfg *rest.Config) error {
+
 	oc := client.Options{
 		Scheme: scheme,
 		Mapper: controllerruntimeClient.RESTMapper(),
@@ -134,8 +135,18 @@ func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaio
 			},
 			Spec: sc.Spec,
 		}
-
-		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
+		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); apierrors.IsAlreadyExists(err) {
+			var serviceCatalog primazaiov1alpha1.ServiceCatalog
+			if err := cli.Get(ctx, types.NamespacedName{Name: sc.Name, Namespace: ns}, &serviceCatalog, &client.GetOptions{}); err != nil {
+				return err
+			}
+			// Need to retrieve the resource version before trying to update
+			// existing catalog
+			sccp.ResourceVersion = serviceCatalog.ResourceVersion
+			if err := cli.Update(ctx, sccp, &client.UpdateOptions{}); err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
 	}
