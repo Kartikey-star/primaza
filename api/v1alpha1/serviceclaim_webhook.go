@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -74,17 +75,41 @@ func (v *serviceClaimValidator) validate(r *ServiceClaim) error {
 	return nil
 }
 
+func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceClaim) error {
+	if new.Spec.ApplicationClusterContext != nil && new.Spec.EnvironmentTag != "" {
+		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
+	}
+	if new.Spec.ApplicationClusterContext == nil && new.Spec.EnvironmentTag == "" {
+		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
+	}
+	if new.Spec.Application.Name != "" && new.Spec.Application.Selector != nil {
+		return fmt.Errorf("Both Application name and Application selector cannot be used together")
+	}
+
+	if !reflect.DeepEqual(old.Spec.ServiceClassIdentity, new.Spec.ServiceClassIdentity) || !reflect.DeepEqual(old.Spec.ServiceEndpointDefinitionKeys, new.Spec.ServiceEndpointDefinitionKeys) {
+		return fmt.Errorf("Service Claim's Service Class Identity or Service Endpoint Definition Keys are not meant to be updated, Please delete the existing service claim")
+	}
+	return nil
+}
+
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (v *serviceClaimValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) error {
-	r, ok := newObj.(*ServiceClaim)
+	newServiceClaim, ok := newObj.(*ServiceClaim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", newObj.GetObjectKind().GroupVersionKind())
 		return err
 	}
 
-	serviceclaimlog.Info("validate update", "name", r.Name)
-	return v.validate(r)
+	oldServiceClaim, ok := oldObj.(*ServiceClaim)
+	if !ok {
+		err := fmt.Errorf("Old Object is not a Service Claim")
+		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", oldObj.GetObjectKind().GroupVersionKind())
+		return err
+	}
+
+	serviceclaimlog.Info("validate update", "name", newServiceClaim.Name)
+	return v.validateUpdate(oldServiceClaim, newServiceClaim)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
